@@ -1,0 +1,24 @@
+DEFINE PROCEDURE "factor?" [n, m]:
+	BLOCK 1: BEGIN
+		CELL(0) <== n;
+		LOOP AT MOST m TIMES:
+			BLOCK 2: BEGIN
+				IF NOT CELL(0) < m, THEN: ABORT LOOP 2;
+				CELL(0) <== CELL(0) + n;
+			BLOCK 2: END;
+		OUTPUT <== CELL(0) = m;
+	BLOCK 1: END.
+
+DEFINE PROCEDURE "prime?" [n]: BLOCK 1: BEGIN
+	CELL(0) <== 2;
+	OUTPUT <== YES;
+	LOOP AT MOST n TIMES: BLOCK 2: BEGIN
+		IF factor?[CELL(0), n], THEN: BLOCK 3: BEGIN
+			OUTPUT <== NOT CELL(0) < n;
+			ABORT LOOP 2;
+		BLOCK 3: END;
+		CELL(0) <== CELL(0) + 1;
+	BLOCK 2: END;
+BLOCK 1: END.
+
+prime?[17]

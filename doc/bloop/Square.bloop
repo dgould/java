@@ -1,0 +1,8 @@
+DEFINE PROCEDURE "Square" [n]:
+	BLOCK 1: BEGIN
+		OUTPUT <== n * n;
+	BLOCK 1: END
+.
+
+Square[5]
+

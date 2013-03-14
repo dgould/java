@@ -1,0 +1,387 @@
+package org.dgould.geb.bloop;
+import java_cup.runtime.*;
+import org.dgould.geb.bloop.ast.*;
+import org.dgould.*;
+
+parser code {:
+
+  private Yylex yylex;
+
+  void assignLex(Yylex yylex) {
+    this.yylex = yylex;
+  }
+
+:};
+
+init with {: 
+
+if (yylex == null) 
+  System.err.println("WARNING: yylex must be initialized!");
+
+:};
+scan with {: return yylex.yylex(); :};
+
+terminal TokenValue SEPARATOR;
+terminal TokenValue CONSTANT, YES, NO;
+terminal TokenValue IDENTIFIER, CELL, OUTPUT;
+terminal TokenValue QUOTE, LBRACKET, RBRACKET, LPAREN, RPAREN, LBRACE, RBRACE;
+terminal TokenValue COLON, SEMICOLON, COMMA, PERIOD;
+terminal TokenValue NOT, ASSIGN, AND, OR, EQUALS, LESSTHAN, ADD, SUBTRACT, MULTIPLY, QUOTIENT, REMAINDER;
+terminal TokenValue BLOCK, BEGIN, END, QUIT;
+terminal TokenValue LOOP, AT, MOST, TIMES, ABORT;
+terminal TokenValue IF, THEN;
+terminal TokenValue DEFINE, PROCEDURE;
+
+/*For reading a complete program: procDefs followed by a call
+*/
+non terminal Ast					program;
+
+
+non terminal ProcedureDefinition	procedureDef;
+
+non terminal ExpressionList			nonempty_expList;
+non terminal ExpressionList			expList;
+non terminal IdentifierList			nonempty_identifierList;
+non terminal IdentifierList			identifierList;
+non terminal StatementList			statementList;
+
+non terminal Block					codeBlock;
+
+non terminal Expression				expression;
+non terminal CellExpression			cellExp;
+non terminal CallExpression			callExp;
+non terminal OperatorExpression		operatorExp;
+
+non terminal Statement				statement;
+non terminal BlockStatement			blockStatement;
+non terminal LoopStatement			loopStatement;
+non terminal IfStatement			ifStatement;
+non terminal AssignmentStatement	assignStatement;
+non terminal QuitBlockStatement		quitStatement;
+non terminal AbortLoopStatement		abortStatement;
+
+precedence left		BLOCK;
+
+precedence left		ASSIGN;
+precedence left		AND;
+precedence left		OR;
+precedence left		EQUALS;
+precedence left		LESSTHAN;
+precedence left		MULTIPLY, QUOTIENT, REMAINDER;
+precedence left		ADD, SUBTRACT;
+
+/*For reading a complete program: procDefs followed by a call
+*/
+start with program;
+
+program ::= 
+		procedureDef:proc program:prog
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{program ::= procedureDef program}");}
+				RESULT = new Program(proc, prog);
+			:}
+	|	procedureDef:proc callExp:call
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{program ::= procedureDef callExp}");}
+				RESULT = new Program(proc, call);
+			:}
+	|	procedureDef:proc SEPARATOR
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{program ::= procedureDef}");}
+				RESULT = proc;
+			:}
+	|	callExp:call SEPARATOR
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{program ::= callExp}");}
+				RESULT = call;
+			:}
+	;
+
+nonempty_expList ::= 
+		expression:exp COMMA nonempty_expList:list
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{nonempty_expList ::= expression COMMA nonempty_expList}");}
+				RESULT = new ExpressionList(exp, list);
+			:}
+	|	expression:exp
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{nonempty_expList ::= expression}");}
+				RESULT = new ExpressionList(exp, null);
+			:}
+	;
+
+expList ::= 
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expList ::= }");}
+				RESULT = null;
+			:}
+	|	nonempty_expList:list
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expList ::= nonempty_expList}");}
+				RESULT = list;
+			:}
+	;
+
+nonempty_identifierList ::= 
+		IDENTIFIER:id COMMA nonempty_identifierList:list
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{nonempty_identifierList ::= IDENTIFIER COMMA nonempty_identifierList}");}
+				RESULT = new IdentifierList(id.identifierValue, list);
+			:}
+	|	IDENTIFIER:id
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{nonempty_identifierList ::= IDENTIFIER}");}
+				RESULT = new IdentifierList(id.identifierValue, null);
+			:}
+	;
+
+identifierList ::= 
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{identifierList ::= }");}
+				RESULT = null;
+			:}
+	|	nonempty_identifierList:list
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{identifierList ::= nonempty_identifierList}");}
+				RESULT = list;
+			:}
+	;
+
+statementList ::= 
+		statementList:list statement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statementList ::= statement statementList}");}
+				
+				list.Append(stmt);
+				RESULT = list;
+			:}
+	|	statement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statementList ::= statement}");}
+				RESULT = new StatementList(stmt, null);
+			:}
+	;
+
+expression ::= 
+		CONSTANT:token
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= CONSTANT}");}
+				RESULT = (Expression)new ConstantExpression(new Value(token.numberValue));
+			:}
+	|	YES:token
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= YES}");}
+				RESULT = (Expression)new ConstantExpression(new Value(token.boolValue));
+			:}
+	|	NO:token
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= NO}");}
+				RESULT = (Expression)new ConstantExpression(new Value(token.boolValue));
+			:}
+	|	IDENTIFIER:token
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= IDENTIFIER}");}
+				RESULT = (Expression)new VariableExpression(token.identifierValue);
+			:}
+	|	cellExp:exp
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= cellExp}");}
+				RESULT = (Expression)exp;
+			:}
+	|	callExp:exp
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= callExp}");}
+				RESULT = (Expression)exp;
+			:}
+	|	operatorExp:exp
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= operatorExp}");}
+				RESULT = (Expression)exp;
+			:}
+	|	LBRACE expression:exp RBRACE
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{expression ::= LBRACE expression RBRACE}");}
+				RESULT = (Expression)exp;
+			:}
+	;
+
+cellExp ::= 
+		CELL LPAREN expression:exp RPAREN
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{cellExp ::= CELL LPAREN expression RPAREN}");}
+				RESULT = new CellExpression(exp);
+			:}
+	;
+
+callExp ::= 
+		IDENTIFIER:proc LBRACKET expList:list RBRACKET
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{callExp ::= IDENTIFIER LBRACKET expList RBRACKET}");}
+				RESULT = new CallExpression(proc.identifierValue, list);
+			:}
+	;
+
+operatorExp ::= 
+		NOT expression:arg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= NOT expression}");}
+				RESULT = (OperatorExpression)new NotExpression(arg);
+			:}
+	|	expression:leftArg AND expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression AND expression}");}
+				RESULT = (OperatorExpression)new AndExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg OR expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression OR expression}");}
+				RESULT = (OperatorExpression)new OrExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg EQUALS expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression EQUALS expression}");}
+				RESULT = (OperatorExpression)new EqualsExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg LESSTHAN expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression LESSTHAN expression}");}
+				RESULT = (OperatorExpression)new LessThanExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg ADD expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression ADD expression}");}
+				RESULT = (OperatorExpression)new AddExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg SUBTRACT expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression SUBTRACT expression}");}
+				RESULT = (OperatorExpression)new SubtractExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg MULTIPLY expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression MULTIPLY expression}");}
+				RESULT = (OperatorExpression)new MultiplyExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg QUOTIENT expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression QUOTIENT expression}");}
+				RESULT = (OperatorExpression)new QuotientExpression(leftArg, rightArg);
+			:}
+	|	expression:leftArg REMAINDER expression:rightArg
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{operatorExp ::= expression REMAINDER expression}");}
+				RESULT = (OperatorExpression)new RemainderExpression(leftArg, rightArg);
+			:}
+	;
+
+procedureDef ::= 
+		DEFINE PROCEDURE QUOTE IDENTIFIER:name QUOTE LBRACKET identifierList:fargs RBRACKET COLON codeBlock:body PERIOD
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{procedureDef ::= DEFINE PROCEDURE QUOTE IDENTIFIER QUOTE LBRACKET identifierList RBRACKET COLON codeBlock PERIOD}");}
+				RESULT = new ProcedureDefinition(name.identifierValue, fargs, new BlockStatement(body));
+			:}
+	;
+
+codeBlock ::= 
+		BLOCK CONSTANT:num1 COLON BEGIN statementList:body BLOCK CONSTANT:num2 COLON END
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{codeBlock ::= BLOCK CONSTANT COLON BEGIN statementList BLOCK CONSTANT COLON END}");}
+				if(NaturalNumber.Compare(num1.numberValue, num2.numberValue) != 0)
+				{
+					//handle error?
+					RESULT = null;
+				}
+				RESULT = new Block(num1.numberValue, body);
+			:}
+	;
+
+statement ::= 
+		blockStatement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statement ::= blockStatement}");}
+				RESULT = (Statement)stmt;
+			:}
+	|	loopStatement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statement ::= loopStatement}");}
+				RESULT = (Statement)stmt;
+			:}
+	|	ifStatement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statement ::= ifStatement}");}
+				RESULT = (Statement)stmt;
+			:}
+	|	assignStatement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statement ::= assignStatement}");}
+				RESULT = (Statement)stmt;
+			:}
+	|	quitStatement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statement ::= quitStatement}");}
+				RESULT = (Statement)stmt;
+			:}
+	|	abortStatement:stmt
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{statement ::= abortStatement}");}
+				RESULT = (Statement)stmt;
+			:}
+	;
+
+blockStatement ::= 
+		codeBlock:b SEMICOLON
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{blockStatement ::= codeBlock SEMICOLON}");}
+				RESULT = new BlockStatement(b);
+			:}
+	;
+
+loopStatement ::= 
+		LOOP AT MOST expression:limit TIMES COLON blockStatement:body
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{loopStatement ::= LOOP AT MOST expression TIMES COLON blockStatement}");}
+				RESULT = new LoopStatement(limit, body, true);
+			:}
+	|	LOOP expression:limit TIMES COLON blockStatement:body
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{loopStatement ::= LOOP expression TIMES COLON blockStatement}");}
+				RESULT = new LoopStatement(limit, body, false);
+			:}
+	;
+
+ifStatement ::= 
+		IF expression:test COMMA THEN COLON statement:then
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{ifStatement ::= IF expression:test COMMA THEN COLON atement:then}");}
+				RESULT = new IfStatement(test, then);
+			:}
+	;
+
+assignStatement ::= 
+		OUTPUT ASSIGN expression:value SEMICOLON
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{assignStatement ::= OUTPUT ASSIGN expression SEMICOLON}");}
+				RESULT = new AssignmentStatement(null, value);
+			:}
+	|	CELL LPAREN expression:index RPAREN ASSIGN expression:value SEMICOLON
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{assignStatement ::= CELL LPAREN expression RPAREN ASSIGN expression SEMICOLON}");}
+				RESULT = new AssignmentStatement(index, value);
+			:}
+	;
+
+quitStatement ::= 
+		QUIT BLOCK CONSTANT:num SEMICOLON
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{quitStatement ::= QUIT BLOCK CONSTANT SEMICOLON}");}
+				RESULT = new QuitBlockStatement(num.numberValue);
+			:}
+	;
+
+abortStatement ::= 
+		ABORT LOOP CONSTANT:num SEMICOLON
+			{:
+				if(BlooPTerminal.debug) {System.out.println("{abortStatement ::= ABORT LOOP CONSTANT SEMICOLON}");}
+				RESULT = new AbortLoopStatement(num.numberValue);
+			:}
+	;

@@ -1,0 +1,13 @@
+DEFINE PROCEDURE "Factorial" [n]:
+	BLOCK 1: BEGIN
+		CELL(0) <== 1;
+		CELL(1) <== 1;
+		LOOP n TIMES:
+			BLOCK 2: BEGIN
+				CELL(0) <== CELL(0) * CELL(1);
+				CELL(1) <== CELL(1) + 1;
+			BLOCK 2: END;
+		OUTPUT <== CELL(0);
+	BLOCK 1: END.
+
+Factorial[5]

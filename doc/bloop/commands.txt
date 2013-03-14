@@ -1,0 +1,53 @@
+# TO GENERATE LEXER:
+	#run Jlex on BlooP.lex -- JLex takes a filename and outputs to <filename>.java,
+	#so passing it in with the command:
+	
+	java JLex.Main BlooP.lex
+	
+	#makes it output the lexer code into BlooP.lex.java 
+
+
+# TO GENERATE PARSER:
+	#run CUP on BlooP.cup -- CUP reads grammar from stdin and outputs to files,
+	#so redirecting it in with the command:
+	
+	java java_cup.Main < BlooP.cup
+	
+	#makes it output the parser code into the default files parser.java and sym.java
+	#the option "-parser <name>" makes it use <name> for the parser class instead of
+	#the default "parser". Create three parser classes with different "start" rules:
+	#set the rule sequentially to
+	# "start with program;"
+	# "start with procedureDef;"
+	# "start with program;"
+	#run these commands respectively 
+	
+	java java_cup.Main -parser ProgramParser < BlooP.cup
+	java java_cup.Main -parser ProcedureParser < BlooP.cup
+	java java_cup.Main -parser CallParser < BlooP.cup
+	
+	#@%$*! CUP produces a non-public class with a hardcoded name of CUP$actions,
+	#so after running cup, must globally replace "CUP$actions" with, respectively:
+	# "CUP$actions_Program"
+	# "CUP$actions_Procedure"
+	# "CUP$actions_Call"
+
+
+# TO COMPILE JAVA SOURCE FILES AND INSTALL CLASS FILES:
+	#run javac on *java in source directories, then move *class to class directories:
+	
+	#javac *java
+	#mv *class $CLASSPATH/org/dgould/geb/bloop
+	#cd ast
+	#javac *java
+	#mv *class $CLASSPATH/org/dgould/geb/bloop/ast
+	#cd ..
+	
+	#there can be a chicken-and-egg problem with dependencies between bloop classes
+	#and bloop.ast classes -- once all classes exist it's okay unless something changes
+	#drastically, so the needed subset can be used. To compile everything from scratch,
+	#use the "-sourcepath" option, so the compiler can reference other classes before
+	#they have been compiled. Also, use "-d" to select destination directory:
+	
+	javac -sourcepath ~/code/java -d $CLASSPATH *java
+

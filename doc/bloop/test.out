@@ -1,0 +1,98 @@
+[localhost:dgould/geb/bloop] david% java dgould.geb.bloop.BlooPTerminal
+# Initializing parser
+DEFINE PROCEDURE "Square" [n]:
+# Current Symbol is #38
+# Shift under term #38 to state #3
+# Current token is #39
+# Shift under term #39 to state #4
+# Current token is #8
+# Shift under term #8 to state #5
+# Current token is #5
+# Shift under term #5 to state #6
+# Current token is #8
+# Shift under term #8 to state #7
+# Current token is #9
+# Shift under term #9 to state #8
+# Current token is #5
+# Shift under term #5 to state #9
+# Current token is #10
+# Reduce with prod #8 [NT=5, SZ=1]
+# Goto state #11
+# Reduce with prod #10 [NT=6, SZ=1]
+# Goto state #10
+# Shift under term #10 to state #12
+# Current token is #15
+# Shift under term #15 to state #13
+        BLOCK 1: BEGIN
+# Current token is #27
+# Shift under term #27 to state #15
+# Current token is #2
+# Shift under term #2 to state #16
+# Current token is #15
+# Shift under term #15 to state #17
+# Current token is #28
+# Shift under term #28 to state #18
+                OUTPUT <== n * n;
+# Current token is #7
+# Shift under term #7 to state #21
+# Current token is #19
+# Shift under term #19 to state #98
+# Current token is #5
+# Shift under term #5 to state #43
+# Current token is #21
+# Reduce with prod #16 [NT=9, SZ=1]
+# Goto state #99
+# Shift under term #21 to state #52
+# Current token is #5
+# Shift under term #5 to state #43
+# Current token is #16
+# Reduce with prod #16 [NT=9, SZ=1]
+# Goto state #53
+# Reduce with prod #24 [NT=12, SZ=3]
+# Goto state #39
+# Reduce with prod #19 [NT=9, SZ=1]
+# Goto state #99
+# Shift under term #16 to state #100
+        BLOCK 1: END
+# Current token is #27
+# Reduce with prod #42 [NT=17, SZ=4]
+# Goto state #26
+# Reduce with prod #35 [NT=13, SZ=1]
+# Goto state #32
+# Shift under term #27 to state #15
+# Current token is #2
+# Shift under term #2 to state #16
+# Current token is #15
+# Shift under term #15 to state #17
+# Current token is #29
+Syntax error
+# Attempting error recovery
+# Finding recovery state on stack
+# Pop stack by one, state was # 17
+# Pop stack by one, state was # 16
+# Pop stack by one, state was # 15
+# Pop stack by one, state was # 32
+# Pop stack by one, state was # 18
+# Pop stack by one, state was # 17
+# Pop stack by one, state was # 16
+# Pop stack by one, state was # 15
+# Pop stack by one, state was # 13
+# Pop stack by one, state was # 12
+# Pop stack by one, state was # 10
+# Pop stack by one, state was # 8
+# Pop stack by one, state was # 7
+# Pop stack by one, state was # 6
+# Pop stack by one, state was # 5
+# Pop stack by one, state was # 4
+# Pop stack by one, state was # 3
+# Pop stack by one, state was # 0
+# No recovery state found on stack
+# Error recovery fails
+Couldn't repair and continue parse
+Exception in thread "main" java.lang.Exception: Can't recover from previous error(s)
+        at java_cup.runtime.lr_parser.report_fatal_error(lr_parser.java:330)
+        at java_cup.runtime.lr_parser.unrecovered_syntax_error(lr_parser.java:378)
+        at java_cup.runtime.lr_parser.debug_parse(lr_parser.java:736)
+        at dgould.geb.bloop.BlooPInterpreter.ParseStream(BlooPInterpreter.java:24)
+        at dgould.geb.bloop.BlooPTerminal.main(BlooPTerminal.java:13)
+[localhost:dgould/geb/bloop] david% 

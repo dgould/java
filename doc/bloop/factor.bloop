@@ -1,0 +1,12 @@
+DEFINE PROCEDURE "factor?" [n, m]:
+	BLOCK 1: BEGIN
+		CELL(0) <== n;
+		LOOP AT MOST m TIMES:
+			BLOCK 2: BEGIN
+				IF NOT CELL(0) < m, THEN: ABORT LOOP 2;
+				CELL(0) <== CELL(0) + n;
+			BLOCK 2: END;
+		OUTPUT <== CELL(0) = m;
+	BLOCK 1: END.
+ 
+factor?[6, 30]
