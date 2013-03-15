@@ -1,0 +1,58 @@
+/* XX.java
+1234567890123456789012345678901234567890123456789012345678901234567890123456789
+*/
+
+package org.dgould.scm.prim;
+
+import org.dgould.scm.*;
+
+
+//////////////////////////////////////////////////////////////////////////////
+// THESE USE NORMAL-ORDER EVALUATION OF ARGUMENTS INSTEAD OF APPLICATIVE ORDER
+// I CAN CHEAT LIKE THIS TO MAKE PRIMITIVES THAT ARE REALLY SPECIAL FORMS
+// THEY ALSO TAKE VARIABLE NUMBERS OF ARGUMENTS
+
+//begin takes any number of arguments, evaluates them all,
+//and returns the value of the last one
+public class Begin extends Primitive
+{
+//PRIVATE INSTANCE MEMBERS
+	SchemeObject a;
+	SchemeObject b;
+	
+//CONSTRUCTORS
+	public Begin()
+	{
+		a = new SchemeObject(SchemeObject.SYMBOL, (Object)"a");
+		b = new SchemeObject(SchemeObject.SYMBOL, (Object)"b");
+		parameters = Pair.Cons(a, Pair.Cons(b, SchemeObject.NIL));
+	}
+	
+	public SchemeObject Invoke(SchemeObject args, SchemeEnvironment env)
+	{
+		SchemeEnvironment localEnv = BindArgs(args, env);
+		if(localEnv == null)
+		{
+			return new SchemeObject(SchemeObject.ERROR,
+				(Object)"Wrong number of arguments");
+		}
+		SchemeObject aVal = localEnv.GetBinding(a);
+		SchemeObject bVal = localEnv.GetBinding(b);
+
+/* FOR NORMAL-ORDER / VARIABLE-NUM ARGS
+		SchemeObject argList = args;
+		SchemeObject temp = SchemeObject.NIL;
+		while(argList != SchemeObject.NIL)
+		{
+			temp = interpreter.Eval(argList.Car(), env);
+			if(temp.isError())
+			{
+				return temp;
+			}
+			argList = argList.Cdr();
+		}
+		return temp;
+*/
+	}
+}
+
