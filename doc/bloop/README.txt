@@ -18,10 +18,15 @@ To build it, you first need to install JLex and CUP:
 http://www.cs.princeton.edu/~appel/modern/java/JLex/
 http://www.cs.princeton.edu/~appel/modern/java/CUP/
 
+Assuming $CLASSES is a class tree that contains the JLex and CUP classes
+and you're in a directory containing the "org.dgould.*" source tree...
+
 [ADD INSTRUCTIONS FOR RUNNING JLEX AND CUP]
 
 [ADD INSTRUCTIONS FOR COMPILING]
+$ javac -cp $CLASSES:. org/dgould/NaturalNumber.java
+$ javac -cp $CLASSES:. org/dgould/geb/bloop/ast/*\.java
+$ javac -cp $CLASSES:. org/dgould/geb/bloop/*\.java
 
 [ADD INSTRUCTIONS FOR RUNNING]
-
-
+$ java -cp $CLASSES:. org.dgould.geb.bloop.BlooPTerminal < Square.bloop
