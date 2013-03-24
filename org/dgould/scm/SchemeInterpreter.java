@@ -4,6 +4,7 @@
 
 package org.dgould.scm;
 
+import org.dgould.*;
 import org.dgould.scm.prim.*;
 
 import java.net.*;
@@ -12,6 +13,8 @@ import java.io.*;
 public class SchemeInterpreter extends Object
 {
 //CLASS CONSTANTS
+	public final static String READER_EOF		= "PARSING REACHED END OF INPUT SOURCE";
+	
 	public final static String SPECIAL_IF		= "if";
 	public final static String SPECIAL_COND		= "cond";
 	public final static String SPECIAL_LAMBDA	= "lambda";
@@ -43,7 +46,7 @@ public class SchemeInterpreter extends Object
 		
 		// install primitives
 		// for each Primitive subclass Y with Scheme symbol 'X:
-		// InstallPrimitive(X, (Primitive)(new Y()));
+		// InstallPrimitive("X", (Primitive)(new Y()));
 		
 	//	InstallPrimitive("assemble",	(Primitive)(new Assemble()));
 		InstallPrimitive("+",			(Primitive)(new Plus()));
@@ -86,8 +89,8 @@ public class SchemeInterpreter extends Object
 		InstallPrimitive("member",		(Primitive)(new org.dgould.scm.prim.Member()));
 		InstallPrimitive("assoc",		(Primitive)(new Assoc()));
 		
-		this.EvalString("(define (append l1 l2) (if (null? l1) l2 (if (null? (cdr l1)) (cons (car l1) l2) (cons (car l1) (append (cdr l1) l2)))))");
-		this.EvalString("(define (reverse l) (if (or (null? l) (null? (cdr l))) l (append (reverse (cdr l)) (list (car l)))))");
+//		this.EvalString("(define (append l1 l2) (if (null? l1) l2 (if (null? (cdr l1)) (cons (car l1) l2) (cons (car l1) (append (cdr l1) l2)))))");
+//		this.EvalString("(define (reverse l) (if (or (null? l) (null? (cdr l))) l (append (reverse (cdr l)) (list (car l)))))");
 //		this.EvalString("(define (assoc x l) (cond ((null? l) '()) ((equal? x (car (car l))) (car l)) (#t (assoc x (cdr l)))))");
 //		this.EvalString("(define (member x l) (cond ((null? l) '()) ((equal? x (car l)) l) (#t (member x (cdr l)))))");
 //		this.EvalString("(define (map f l) (if (null? l) '() (cons (f (car l)) (map f (cdr l)))))");
@@ -99,91 +102,34 @@ public class SchemeInterpreter extends Object
 	}
 
 //PRIVATE CLASS METHODS	
-	private static SchemeObject ReadList(String source, int start)
+	private static SchemeObject ReadList(Scanner input)
 	{
-		char text [] = source.toCharArray();
-		
-		if(text[start] == ')') //base case
+		int nextChar = input.peek();
+		if((nextChar < 0) || (nextChar == ')'))
 		{
+			try
+			{
+				input.read();
+			}
+			catch(IOException e)
+			{
+			}
 			return SchemeObject.NIL;
 		}
 		
-		SchemeObject obj;
-		SchemeObject theCar = Read(source, start);
-		int startOfCdr = start + SchemeSubstringLength(source, start);
-		while(Character.isWhitespace(text[startOfCdr]))
-		{
-			startOfCdr++;
-		}
-		
-		return Pair.Cons(theCar, ReadList(source, startOfCdr));
+		SchemeObject car = Read(input);
+		SchemeObject cdr = ReadList(input);
+		return Pair.Cons(car, cdr);
 	}
 
 //PUBLIC CLASS METHODS
-	//return offset of end of substring starting at start
-	//and that can be parsed as a single SchemeObject
-	public static int SchemeSubstringLength(String s, int start)
+	
+	public SchemeObject ReadString(String code)
 	{
-		char chars [] = s.toCharArray();
-		int length, parenCount, max;
-		max = s.length();
-		
-		length = 0;
-		while(start + length < max && Character.isWhitespace(chars[start + length]))
-		{
-			length++;
-		}
-		if(start + length == max) {return -1;}
-		
-		if(chars[start + length] == '\'') //special quote syntax
-		{
-			return length + 1 + SchemeSubstringLength(s, start + length + 1);
-		}
-		
-		if(chars[start + length] == '#' && chars[start + length + 1] == '[')
-		{
-			length++;
-			while(start + length < max && chars[start + length] != ']')
-			{
-				length++;
-			}
-			return length + 1;
-		}
-		if(chars[start + length] == '"')
-		{
-			length++;
-			while(start + length < max && chars[start + length] != '"')
-			{
-				length++;
-			}
-			return length + 1;
-		}
-		
-		if(chars[start + length] == '(')
-		{
-			length++;
-			for(parenCount = 1; parenCount > 0; length++)
-			{
-				if(chars[start + length] == '(')
-				{
-					parenCount++;
-				}
-				if(chars[start + length] == ')')
-				{
-					parenCount--;
-				}
-			}
-			return length;
-		}
-		
-		while(start + length < max &&
-		     !Character.isWhitespace(chars[start + length]) &&
-		     chars[start + length] != ')')
-		{
-			length++;
-		}
-		
-		return length;
+		StringReader sr    = new StringReader(code);
+		Scanner      input = new Scanner(sr, true);
+		SchemeObject obj   = Read(input);
+		return obj;
 	}
 	
 	public SchemeObject EvalString(String code)
@@ -192,168 +138,195 @@ public class SchemeInterpreter extends Object
 		{
 			System.out.println("EvalString: \"" + code + "\"");
 		}
-		return Eval(Read(code, 0), globalEnv);
+		SchemeObject obj   = ReadString(code);
+		return Eval(obj, globalEnv);
 	}
 	
-	public SchemeObject EvalFile(URL sourceURL) throws IOException
+	public SchemeObject EvalFile(URL sourceURL)
 	{
-		String text = "";
-		InputStream theFile = sourceURL.openStream();
-		StreamTokenizer tokens = new StreamTokenizer(theFile);
-		tokens.resetSyntax();
-		int temp = tokens.nextToken();
-		
-		while(temp != StreamTokenizer.TT_EOF)
+		InputStream source;
+		try
 		{
-			//if(text.length() > 0 && text.charAt(0) != ';')
-			//{
-			//	if(Character.isWhitespace((char)temp))
-			//	{
-			//		text += " ";
-			//	}
-			//	else
-			//	{
-					text += (new Character((char)temp)).toString();
-			//	}
-			//}
-			temp = tokens.nextToken();
+			source = sourceURL.openStream();
 		}
-		//theFile.close();
-		
-		int i = 0, j;
-		while(i < text.length())
+		catch(IOException e)
 		{
-			j = SchemeSubstringLength(text, i);
-			if(j >= 0)
+			return new SchemeObject(SchemeObject.ERROR, "failed to open '" + sourceURL + "'");
+		}
+		InputStreamReader isr    = new InputStreamReader(source);
+		Scanner           input  = new Scanner(isr, true);
+		
+		SchemeObject obj = SchemeObject.NIL;
+		
+		while(true)
+		{
+			obj = Read(input);
+			if(obj.isError() && ((String)(obj.mContents)).equals(READER_EOF))
 			{
-				Eval(Read(text, i), globalEnv);
-				i += j;
+				break;
 			}
-			else
+			obj = Eval(obj);
+			if(obj.isError())
 			{
 				return SchemeObject.NIL;
 			}
 		}
 		
-		return SchemeObject.NIL;
+		return SchemeObject.TRUE;
 	}
 	
-	public static SchemeObject Read(String source, int start)
+	public static SchemeObject Read(Scanner input)
 	{
 		SchemeObject obj;
-		char text [] = source.toCharArray();
+		char c;
 		String word;
-		int i = start;
-		int textSize = source.length();
+		boolean wasUsingExceptions = input.UsingExceptions();
+		input.UseExceptions();
+	//	int justRead, i, textSize;
+	//	char nextChar;
 		
-		while(i < textSize && Character.isWhitespace(text[i])) //skip leading whitespace
+		//An IOException can happen anywhere during the Read(), meaning we reached EOF,
+		//so we'll catch it and return an ERROR SchemeObject
+		try
 		{
-			i++;
-		}
-		
-		if(text[i] != '(') //base case - atom
-		{
-			//check for booleans, procedures, vectors, and references
-			if(text[i] == '#')
+			//skip leading whitespace
+			input.EatWhitespace();
+			
+			c = (char)input.read();
+			if(c != '(') //base case - atom
 			{
-				i++;
-				if(text[i] == 't') {return SchemeObject.TRUE;}
-				if(text[i] == 'f') {return SchemeObject.NIL;}
-				
-				if(text[i] == '[') //reference
+				//check for macros
+				if(c == '#')
 				{
-					int numStart, numStop, numLength;
-					while(text[i] != ']') {i++;}
-					numStop = i - 1;
-					while(text[i] != ' ') {i--;}
-					numStart = i + 1;
-					numLength = numStop - i;
-					String procStr = new String(text, numStart, numLength);
-					long procNum = Long.parseLong(procStr);
+					c = (char)input.read();
 					
-					//expression is "#[reference 1234]", where 1234 is the reference number
-					return new SchemeObject(SchemeObject.REFERENCE, new Long(procNum));
-				}
-				
-				if(text[i] == '(') //vectors are not implemented
-				{
+					//Booleans
+					if(c == 't') {return SchemeObject.TRUE;}
+					if(c == 'f') {return SchemeObject.NIL;}
 					
+					//Special objects are "#[TYPE CONTENT]"
+					if(c == '[')
+					{
+						//get type: eatwhitespace, then read until whitespace
+						input.EatWhitespace();
+						String type = input.ReadUntilWhitespace();
+						type = type.toUpperCase();
+						input.EatWhitespace();
+						String content = input.ReadUntil(']');
+						c = (char)input.read();
+						
+						if(type.equals("REFERENCE"))
+						{
+							long procNum = Long.parseLong(content);
+							return new SchemeObject(SchemeObject.REFERENCE, 
+								new Long(procNum));
+						}
+						
+						else if(type.equals("ERROR"))
+						{
+							return new SchemeObject(SchemeObject.ERROR, content);
+						}
+						
+						else if(type.equals("PRIMITIVE"))
+						{
+							return new SchemeObject(SchemeObject.ERROR,
+								"unimplemented literal type '" + type + "'");
+						}
+						
+						else
+						{
+							return new SchemeObject(SchemeObject.ERROR,
+								"unknown literal type '" + type + "'");
+						}
+					}
+					
+					if(c == '(') //vectors (not implemented)
+					{
+						return new SchemeObject(SchemeObject.ERROR, "vectors not implemented");
+					}
+					
+					return new SchemeObject(SchemeObject.ERROR, "unknown '#' macro form]");
 				}
 				
-				return new SchemeObject(SchemeObject.ERROR,
-				       (Object)"#[unimplemented '#' form]");
-			}
-			
-			//check for strings
-			if(text[i] == '"')
-			{
-				//return string of chars from start + 1 to before next '"'
-				i++;
-				while(i < textSize && text[i] != '"')
+				//check for strings
+				if(c == '"')
 				{
-					i++;
+					word = input.ReadUntil('"');
+					while(word.endsWith("\\") && (input.peek() > 0))
+					{
+						word = word + input.read() + input.ReadUntil('"');
+					}
+					if(input.peek() > 0)
+					{
+						input.read();
+					}
+
+					return new SchemeObject(SchemeObject.STRING, (Object)word);
 				}
-				word = new String(text, start + 1, (i - 1) - start);
-				return new SchemeObject(SchemeObject.STRING, (Object)word);
+				
+				//check for syntactic sugar of quote special form
+				if(c == '\'')
+				{
+					SchemeObject theCar = new SchemeObject(SchemeObject.SYMBOL,
+						(Object)SPECIAL_QUOTE);
+					SchemeObject theCadr = Read(input);
+					return Pair.Cons(theCar, Pair.Cons(theCadr, SchemeObject.NIL));
+				}
+				
+				//get word
+				word = c + input.ReadUntilWhitespaceOr(')');
+				boolean number = true;
+				Double value = null;
+				
+				try
+				{
+					value = new Double(word);
+				}
+				catch(NumberFormatException e)
+				{
+					number = false;
+				}
+				if(number)
+				{
+					return new SchemeObject(SchemeObject.NUMBER, (Object)value);
+				}
+				
+				//else symbol
+				//return word
+				return new SchemeObject(SchemeObject.SYMBOL, (Object)word);
 			}
 			
-			//check for syntactic sugar of quote special form
-			if(text[i] == '\'')
+			//else, list - call recursive helper
+			SchemeObject theList = ReadList(input);
+			if(SpecialForm_define(theList)) //need to check for special define syntax
 			{
-				SchemeObject theCar = new SchemeObject(SchemeObject.SYMBOL,
-					(Object)SPECIAL_QUOTE);
-				SchemeObject theCadr = Read(source, i + 1);
-				return Pair.Cons(theCar, Pair.Cons(theCadr, SchemeObject.NIL));
-			}
-			
-			//get word
-			while(i < textSize && !Character.isWhitespace(text[i]) && text[i] != ')')
-			{
-				i++;
-			}
-			word = new String(text, start, i - start);
-			boolean number = true;
-			Double value = null;
-			
-			try
-			{
-				value = new Double(word);
-			}
-			catch(NumberFormatException e)
-			{
-				number = false;
-			}
-			
-			if(number)
-			{
-				return new SchemeObject(SchemeObject.NUMBER, (Object)value);
-			}
-			
-			//else symbol
-			//return word
-			return new SchemeObject(SchemeObject.SYMBOL, (Object)word);
-		}
-		
-		//else, list - call recursive helper
-		SchemeObject theList = ReadList(source, i + 1);
-		//System.out.println("Read list from " + Integer.toString(i + 1) + ": " + Print(theList));
-		if(SpecialForm_define(theList)) //need to check for special define syntax
-		{
-			if(theList.Cdr().Car().isPair()) //if second element is a list
-			{
-				SchemeObject variable = theList.Cdr().Car().Car();
-				SchemeObject formals = theList.Cdr().Car().Cdr();
-				SchemeObject body = theList.Cdr().Cdr();
-				SchemeObject lambda = new SchemeObject(SchemeObject.SYMBOL,
-					(Object)SPECIAL_LAMBDA);
-				theList.SetCdr(
-				Pair.Cons(variable,
-				          Pair.Cons(Pair.Cons(lambda,
+				if(theList.Cdr().Car().isPair()) //if second element is a list
+				{
+					SchemeObject variable = theList.Cdr().Car().Car();
+					SchemeObject formals = theList.Cdr().Car().Cdr();
+					SchemeObject body = theList.Cdr().Cdr();
+					SchemeObject lambda = new SchemeObject(SchemeObject.SYMBOL,
+						(Object)SPECIAL_LAMBDA);
+					theList.SetCdr(
+					Pair.Cons(variable,
+					          Pair.Cons(Pair.Cons(lambda,
 						                      Pair.Cons(formals, body)),
-				                    SchemeObject.NIL)));
+						                      SchemeObject.NIL)));
+				}
+			}
+			return theList;
+		}
+		catch(IOException e)
+		{
+			return new SchemeObject(SchemeObject.ERROR, READER_EOF);
+		}
+		finally
+		{
+			if(!wasUsingExceptions)
+			{
+				input.DontUseExceptions();
 			}
 		}
-		return theList;
 	}
 	
 	public static String Print(SchemeObject exp)
@@ -425,7 +398,7 @@ public class SchemeInterpreter extends Object
 		}
 		if(exp.isError())
 		{
-			rep = "ERROR: " + (String)(exp.mContents);
+			rep = "ERROR: '" + (String)(exp.mContents) + "'";
 		}
 		if(exp.isNative())
 		{
@@ -508,6 +481,10 @@ public class SchemeInterpreter extends Object
 	}
 	
 	//evaluate exp in env and return value
+	public SchemeObject Eval(SchemeObject exp)
+	{
+		return this.Eval(exp, this.globalEnv);
+	}
 	public SchemeObject Eval(SchemeObject exp, SchemeEnvironment env)
 	{
 		String tabStr = "";

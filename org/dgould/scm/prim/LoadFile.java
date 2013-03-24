@@ -32,13 +32,11 @@ public class LoadFile extends Primitive
 				"malformed URL: \"" + (String)(filename.mContents) + "\"");
 		}
 		
-		try
+		SchemeObject obj;
+		obj = interpreter.EvalFile(url);
+		if(obj.isError())
 		{
-			interpreter.EvalFile(url);
-		}
-		catch(IOException e2)
-		{
-			return new SchemeObject(SchemeObject.ERROR, "IO Error");
+			return obj;
 		}
 		return SchemeObject.TRUE;
 	}

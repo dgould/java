@@ -7,6 +7,14 @@ package org.dgould.scm;
 public abstract class Primitive extends Object
 {
 //PROTECTED CLASS MEMBERS
+/* TODO: REFACTOR
+BAD pattern here: using class statics here means HORRIBLE things would happen
+if we tried to create multiple interpreters. Should:
+1. eliminate globalEnv by always getting it from interpreter
+2. eliminate interpreter by passing it in to the methods
+Then, would be possible, say, to have multiple threads each owning an
+interpreter, each with separate but overlapping envs.
+*/
 	protected static SchemeEnvironment globalEnv;
 	protected static SchemeInterpreter interpreter;
 
